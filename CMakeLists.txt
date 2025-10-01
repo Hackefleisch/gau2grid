@@ -45,11 +45,6 @@ include(autocmake_safeguards)
 include(custom_color_messages)
 include(custom_static_library)
 
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "/usr/local/gau2grid" CACHE PATH "Install path" FORCE)
-endif()
-message(STATUS "gau2grid install: ${CMAKE_INSTALL_PREFIX}")
-
 #  <<  Python  >>
 find_package(Python 3.6 REQUIRED COMPONENTS Interpreter)
 message(STATUS "${Cyan}Found Python ${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}${ColourReset}: ${Python_EXECUTABLE} (found version ${Python_VERSION})")
@@ -126,59 +121,18 @@ write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/${PN}ConfigVersion.
                                  COMPATIBILITY SameMajorVersion)
 
 # Install our files
-if(${NATIVE_PYTHON_INSTALL_WITH_LIB} OR (NOT(${INSTALL_PYMOD} AND ${NATIVE_PYTHON_INSTALL})))
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/gau2grid/gau2grid.h
-                  ${CMAKE_CURRENT_BINARY_DIR}/gau2grid/gau2grid_pragma.h
-                  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PN})
+# Install the compiled C++ library into the 'gau2grid' Python package directory.
+# CMAKE_INSTALL_LIBDIR is provided by GNUInstallDirs and correctly points
+# to the 'lib' directory relative to the installation prefix.
+install(TARGETS gg
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/gau2grid
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/gau2grid)
 
-    install(TARGETS gg
-            EXPORT "${PN}Targets"
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# Install the Python source files (*.py) into the 'gau2grid' package directory.
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gau2grid/
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        FILES_MATCHING PATTERN "*.py")
 
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PN}Config.cmake
-                  ${CMAKE_CURRENT_BINARY_DIR}/${PN}ConfigVersion.cmake
-            DESTINATION ${CMAKECONFIG_INSTALL_DIR})
-    install(EXPORT "${PN}Targets"
-            NAMESPACE "${PN}::"
-            DESTINATION ${CMAKECONFIG_INSTALL_DIR})
-    export(EXPORT "${PN}Targets"
-           NAMESPACE "${PN}::"
-           FILE "${PROJECT_BINARY_DIR}/${PN}Targets.cmake")
-endif()
-
-if(${INSTALL_PYMOD})
-    if(${NATIVE_PYTHON_INSTALL})
-        execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
-                        "import sys; print(sys.prefix);"
-                        OUTPUT_VARIABLE CMAKE_INSTALL_PREFIX
-                        OUTPUT_STRIP_TRAILING_WHITESPACE)
-        execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
-                        "from distutils import sysconfig as s; import os; import sys; cmake_install_prefix = sys.prefix; prefix_lib = s.get_config_var('LIBDIR'); print(prefix_lib.replace(os.path.commonpath([prefix_lib, cmake_install_prefix]), '').strip('/'));"
-                        OUTPUT_VARIABLE CMAKE_INSTALL_LIBDIR
-                        OUTPUT_STRIP_TRAILING_WHITESPACE)
-        execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
-                        "from distutils import sysconfig as s; import os; prefix_lib = s.get_config_var('LIBDIR'); spdir = s.get_python_lib(plat_specific=True); print(spdir.replace(os.path.commonpath([prefix_lib, spdir]), ''));"
-                        OUTPUT_VARIABLE PYMOD_INSTALL_LIBDIR
-                        OUTPUT_STRIP_TRAILING_WHITESPACE)
-    endif()
-
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
-                    "from numpy import distutils; print(distutils.misc_util.get_shared_lib_extension(is_python_ext=False))"
-                    OUTPUT_VARIABLE PYLIB_EXTENSION
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-    install(DIRECTORY gau2grid
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}${PYMOD_INSTALL_LIBDIR}
-            USE_SOURCE_PERMISSIONS
-            FILES_MATCHING PATTERN "*.py")
-
-    install(FILES $<TARGET_FILE:gg>
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}${PYMOD_INSTALL_LIBDIR}/gau2grid
-            RENAME "gg${PYLIB_EXTENSION}")
-
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}${PYMOD_INSTALL_LIBDIR}/gau2grid)
-endif()
+# Install the license file alongside the Python code.
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/gau2grid)
