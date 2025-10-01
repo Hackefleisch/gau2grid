@@ -33,13 +33,18 @@ class CMakeBuild(build_ext):
             self.build_extension(ext)
 
     def build_extension(self, ext):
-        global cmake_args
-        bypass_install = cmake_args.pop('-DBYPASS_INSTALL')
+        # Get the destination path for the extension
+        ext_path = self.get_ext_fullpath(ext.name)
+        ext_dir = os.path.abspath(os.path.dirname(ext_path))
 
-        internal_cmake_args = ['-DPYTHON_EXECUTABLE=' + sys.executable]
-        internal_cmake_args += [k + "=" + v for k, v in cmake_args.items() if v]
-
+        # CMake build configuration
         cfg = 'Debug' if self.debug else 'Release'
+        cmake_args = [
+            '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + ext_dir,
+            '-DPYTHON_EXECUTABLE=' + sys.executable,
+            '-DCMAKE_BUILD_TYPE=' + cfg
+        ]
+
         build_args = ['--config', cfg]
 
         if platform.system() == "Windows":
@@ -47,17 +52,14 @@ class CMakeBuild(build_ext):
                 cmake_args += ['-A', 'x64']
             build_args += ['--', '/m']
         else:
-            internal_cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
             build_args += ['--', '-j2']
 
-        env = os.environ.copy()
-        env['CXXFLAGS'] = '{} -DVERSION_INFO=\\"{}\\"'.format(env.get('CXXFLAGS', ''), self.distribution.get_version())
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
-        subprocess.check_call(['cmake', ext.sourcedir] + internal_cmake_args, cwd=self.build_temp, env=env)
+
+        # Run CMake configure and build
+        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
-        if not bypass_install:
-            subprocess.check_call(['cmake', '--build', '.'], cwd=self.build_temp)
 
 
 if __name__ == "__main__":

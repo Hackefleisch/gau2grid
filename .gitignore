@@ -121,6 +121,7 @@ TEST
 */test.dat
 *.dylib
 *.so
+*.so.2
 
 # Files resulting from running PSI4
 ijk.dat
