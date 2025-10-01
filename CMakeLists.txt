@@ -79,6 +79,8 @@ set(sources_list ${CMAKE_CURRENT_BINARY_DIR}/gau2grid_phi.c
                  ${CMAKE_CURRENT_BINARY_DIR}/gau2grid_helper.c)
 
 add_library(gg ${sources_list})
+target_include_directories(gg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(gg PRIVATE ${PROJECT_SOURCE_DIR})
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "PGI")
     set_target_properties(gg PROPERTIES COMPILE_FLAGS "-c11")
 else()
@@ -97,42 +99,3 @@ target_link_libraries(gg PRIVATE ${STANDARD_MATH_LIBRARY})
 if(${BUILD_SHARED_LIBS})
     target_link_libraries(gg PRIVATE ${LIBC_INTERJECT})
 endif()
-
-
-###################################  Install  ##################################
-include(CMakePackageConfigHelpers)
-
-set(PN ${PROJECT_NAME})
-
-# Alias to allow for consistent manipulation as a subproject
-add_library( ${PN}::gg ALIAS gg )
-
-target_include_directories(gg PUBLIC
-                           $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
-                           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-
-# GNUInstallDirs "DATADIR" wrong here; CMake search path wants "share".
-set(CMAKECONFIG_INSTALL_DIR "share/cmake/${PN}")
-configure_package_config_file(cmake/${PN}Config.cmake.in
-                              "${CMAKE_CURRENT_BINARY_DIR}/${PN}Config.cmake"
-                              INSTALL_DESTINATION ${CMAKECONFIG_INSTALL_DIR})
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/${PN}ConfigVersion.cmake
-                                 VERSION ${${PN}_VERSION}
-                                 COMPATIBILITY SameMajorVersion)
-
-# Install our files
-# Install the compiled C++ library into the 'gau2grid' Python package directory.
-# CMAKE_INSTALL_LIBDIR is provided by GNUInstallDirs and correctly points
-# to the 'lib' directory relative to the installation prefix.
-install(TARGETS gg
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/gau2grid
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/gau2grid)
-
-# Install the Python source files (*.py) into the 'gau2grid' package directory.
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/gau2grid/
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        FILES_MATCHING PATTERN "*.py")
-
-# Install the license file alongside the Python code.
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/gau2grid)

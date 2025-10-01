@@ -57,7 +57,7 @@ class CMakeBuild(build_ext):
         subprocess.check_call(['cmake', ext.sourcedir] + internal_cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
         if not bypass_install:
-            subprocess.check_call(['cmake', '--build', '.', '--target', 'install'], cwd=self.build_temp)
+            subprocess.check_call(['cmake', '--build', '.'], cwd=self.build_temp)
 
 
 if __name__ == "__main__":
